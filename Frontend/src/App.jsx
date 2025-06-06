@@ -10,12 +10,20 @@ import { auth } from "./utils/auth";
 import { testBackendConnection, showDebugInfo } from "./utils/test-connection";
 import LoginForm from "./components/LoginForm";
 import RegisterForm from "./components/RegisterForm";
+import NewProjectModal from "./components/NewProjectModal";
+import ExploreProjectsModal from "./components/ExploreProjectsModal";
+import InviteCollaboratorsModal from "./components/InviteCollaboratorsModal";
+import ProjectDetailsModal from "./components/ProjectDetailsModal";
+import { projectsAPI } from "./utils/api";
+// import SimpleTestModal from "./components/SimpleTestModal";
 
 function App() {
   const [currentUser, setCurrentUser] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [authView, setAuthView] = useState("login"); // 'login' sau 'register'
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+
+  // Functionality will be added later
 
   // Verifică autentificarea la încărcarea aplicației
   useEffect(() => {
@@ -57,6 +65,8 @@ function App() {
     setIsMobileMenuOpen(false);
     console.log("👋 Delogat cu succes");
   };
+
+  // Button handlers moved to Dashboard component
 
   // Loading screen
   if (isLoading) {
@@ -302,9 +312,181 @@ function App() {
 const Dashboard = () => {
   const [storageInfo, setStorageInfo] = useState(null);
 
+  // Modal states
+  const [isNewProjectModalOpen, setIsNewProjectModalOpen] = useState(false);
+  const [isExploreProjectsModalOpen, setIsExploreProjectsModalOpen] =
+    useState(false);
+  const [isInviteCollaboratorsModalOpen, setIsInviteCollaboratorsModalOpen] =
+    useState(false);
+  const [isProjectDetailsModalOpen, setIsProjectDetailsModalOpen] =
+    useState(false);
+  const [selectedProject, setSelectedProject] = useState(null);
+
+  // Public projects states
+  const [publicProjects, setPublicProjects] = useState([]);
+  const [filteredPublicProjects, setFilteredPublicProjects] = useState([]);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [isLoadingProjects, setIsLoadingProjects] = useState(false);
+  const [selectedTag, setSelectedTag] = useState("all");
+
+  // Private project access states
+  const [isPinModalOpen, setIsPinModalOpen] = useState(false);
+  const [pendingPrivateProject, setPendingPrivateProject] = useState(null);
+  const [pinInput, setPinInput] = useState("");
+  const [pinError, setPinError] = useState("");
+
   useEffect(() => {
     setStorageInfo(auth.getStorageInfo());
+    fetchPublicProjects(); // Încarcă proiectele publice la start
   }, []);
+
+  useEffect(() => {
+    filterPublicProjects();
+  }, [publicProjects, searchQuery, selectedTag]);
+
+  // Handler functions for action buttons
+  const handleNewProject = () => {
+    console.log("🎉 Deschidere modal 'Proiect nou'");
+    setIsNewProjectModalOpen(true);
+  };
+
+  const handleExploreProjects = () => {
+    console.log("🔍 Deschidere modal 'Explorează proiecte'");
+    setIsExploreProjectsModalOpen(true);
+  };
+
+  const handleInviteCollaborators = () => {
+    console.log("👥 Deschidere modal 'Invită colaboratori'");
+    setIsInviteCollaboratorsModalOpen(true);
+  };
+
+  // Project selection handler
+  const handleProjectSelect = (project, skipPinCheck = false) => {
+    console.log("📋 Proiect selectat:", project);
+
+    // Dacă skipPinCheck este true (proiect propriu), deschide direct
+    if (skipPinCheck) {
+      console.log("✅ Proiect propriu - se deschide direct");
+      setSelectedProject(project);
+      setIsProjectDetailsModalOpen(true);
+      return;
+    }
+
+    // Verifică dacă proiectul este privat
+    if (project.access === "private") {
+      console.log("🔒 Proiect privat detectat, se cere pin-ul");
+      setPendingPrivateProject(project);
+      setPinInput("");
+      setPinError("");
+      setIsPinModalOpen(true);
+    } else {
+      // Proiect public - deschide direct
+      setSelectedProject(project);
+      setIsProjectDetailsModalOpen(true);
+    }
+  };
+
+  // Validare pin pentru proiect privat
+  const handlePinSubmit = () => {
+    if (!pendingPrivateProject) return;
+
+    const enteredPin = pinInput.trim();
+    const requiredPin = pendingPrivateProject.accessId;
+
+    if (enteredPin === requiredPin) {
+      console.log("✅ Pin corect - se deschide proiectul privat");
+      setSelectedProject(pendingPrivateProject);
+      setIsProjectDetailsModalOpen(true);
+      setIsPinModalOpen(false);
+      setPendingPrivateProject(null);
+      setPinInput("");
+      setPinError("");
+    } else {
+      console.log("❌ Pin incorect");
+      setPinError("Pin incorect! Te rog să încerci din nou.");
+    }
+  };
+
+  // Anulare acces proiect privat
+  const handlePinCancel = () => {
+    setIsPinModalOpen(false);
+    setPendingPrivateProject(null);
+    setPinInput("");
+    setPinError("");
+  };
+
+  // Fetch all projects for searching
+  const fetchPublicProjects = async () => {
+    setIsLoadingProjects(true);
+    try {
+      const allProjects = await projectsAPI.getAll();
+      setPublicProjects(allProjects);
+      console.log("✅ Toate proiectele încărcate:", allProjects);
+    } catch (error) {
+      console.error("❌ Eroare la încărcarea proiectelor:", error);
+    } finally {
+      setIsLoadingProjects(false);
+    }
+  };
+
+  // Filter projects with special logic for private ones
+  const filterPublicProjects = () => {
+    let filtered = [...publicProjects];
+
+    // Filtrare inițială: afișează doar proiectele publice by default
+    if (!searchQuery.trim()) {
+      // Dacă nu e căutare, afișează doar proiectele publice
+      filtered = filtered.filter((project) => project.access !== "private");
+    } else {
+      // Dacă există căutare, aplicăm logica specială
+      const query = searchQuery.toLowerCase();
+
+      filtered = filtered.filter((project) => {
+        // Pentru proiectele publice, căutare normală
+        if (project.access !== "private") {
+          return (
+            project.title?.toLowerCase().includes(query) ||
+            project.description?.toLowerCase().includes(query) ||
+            project.tags?.toLowerCase().includes(query) ||
+            project.user?.firstName?.toLowerCase().includes(query) ||
+            project.user?.lastName?.toLowerCase().includes(query)
+          );
+        }
+        // Pentru proiectele private, doar dacă numele coincide EXACT
+        else {
+          return project.title?.toLowerCase() === query;
+        }
+      });
+    }
+
+    // Filter by tag (se aplică și proiectelor private găsite)
+    if (selectedTag !== "all") {
+      filtered = filtered.filter((project) =>
+        project.tags?.toLowerCase().includes(selectedTag.toLowerCase())
+      );
+    }
+
+    setFilteredPublicProjects(filtered);
+  };
+
+  // Get unique tags from public projects
+  const getAvailableTags = () => {
+    const allTags = publicProjects
+      .flatMap((project) =>
+        project.tags ? project.tags.split(",").map((tag) => tag.trim()) : []
+      )
+      .filter((tag) => tag.length > 0);
+    return [...new Set(allTags)];
+  };
+
+  // Format date for display
+  const formatDate = (dateString) => {
+    return new Date(dateString).toLocaleDateString("ro-RO", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+    });
+  };
 
   return (
     <div
@@ -446,17 +628,259 @@ const Dashboard = () => {
               flexWrap: "wrap",
             }}
           >
-            <button className="btn btn-primary" style={{ minWidth: "160px" }}>
+            <button
+              className="btn btn-primary"
+              style={{ minWidth: "160px" }}
+              onClick={handleNewProject}
+            >
               ➕ Proiect nou
             </button>
-            <button className="btn btn-secondary" style={{ minWidth: "160px" }}>
+            <button
+              className="btn btn-secondary"
+              style={{ minWidth: "160px" }}
+              onClick={handleExploreProjects}
+            >
               📁 Explorează proiecte
-            </button>
-            <button className="btn btn-accent" style={{ minWidth: "160px" }}>
-              👥 Invită colaboratori
             </button>
           </div>
         </div>
+
+        {/* Public Projects Search */}
+        <div className="card" style={{ width: "100%", textAlign: "center" }}>
+          <h3 style={{ marginBottom: "1.5rem", fontSize: "1.5rem" }}>
+            🔍 Proiecte publice disponibile
+          </h3>
+
+          {/* Search Bar */}
+          <div
+            style={{
+              display: "flex",
+              gap: "1rem",
+              justifyContent: "center",
+              marginBottom: "2rem",
+              flexWrap: "wrap",
+              alignItems: "center",
+            }}
+          >
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Caută proiecte după nume, tags sau descriere..."
+              style={{
+                flex: "1",
+                maxWidth: "400px",
+                padding: "0.75rem",
+                borderRadius: "8px",
+                border: "1px solid var(--border)",
+                fontSize: "1rem",
+                background: "var(--background)",
+              }}
+            />
+            <button
+              className="btn btn-primary"
+              style={{ minWidth: "120px" }}
+              onClick={fetchPublicProjects}
+              disabled={isLoadingProjects}
+            >
+              {isLoadingProjects ? "🔄 Se încarcă..." : "🔄 Reîncarcă"}
+            </button>
+          </div>
+
+          {/* Filter Options */}
+          <div
+            style={{
+              display: "flex",
+              gap: "0.5rem",
+              justifyContent: "center",
+              marginBottom: "2rem",
+              flexWrap: "wrap",
+            }}
+          >
+            <button
+              className={`btn ${
+                selectedTag === "all" ? "btn-primary" : "btn-outline"
+              }`}
+              style={{ fontSize: "0.9rem" }}
+              onClick={() => setSelectedTag("all")}
+            >
+              🏷️ Toate
+            </button>
+            {getAvailableTags()
+              .slice(0, 6)
+              .map((tag) => (
+                <button
+                  key={tag}
+                  className={`btn ${
+                    selectedTag === tag ? "btn-primary" : "btn-outline"
+                  }`}
+                  style={{ fontSize: "0.9rem" }}
+                  onClick={() => setSelectedTag(tag)}
+                >
+                  {tag}
+                </button>
+              ))}
+          </div>
+
+          {/* Results Section */}
+          <div style={{ textAlign: "left" }}>
+            <h4 style={{ marginBottom: "1rem", color: "var(--text-light)" }}>
+              📋 {filteredPublicProjects.length} proiecte găsite
+            </h4>
+
+            {isLoadingProjects ? (
+              <div style={{ textAlign: "center", padding: "2rem" }}>
+                <div
+                  className="spinner"
+                  style={{ margin: "0 auto 1rem" }}
+                ></div>
+                <p>Se încarcă proiectele publice...</p>
+              </div>
+            ) : filteredPublicProjects.length === 0 ? (
+              <div
+                className="card"
+                style={{
+                  textAlign: "center",
+                  background: "var(--background)",
+                  border: "2px dashed var(--border)",
+                }}
+              >
+                <div style={{ padding: "2rem" }}>
+                  <h5
+                    style={{
+                      color: "var(--text-light)",
+                      marginBottom: "0.5rem",
+                    }}
+                  >
+                    {publicProjects.length === 0
+                      ? "📭 Nu există proiecte publice"
+                      : "🔍 Nu s-au găsit rezultate"}
+                  </h5>
+                  <p style={{ fontSize: "0.9rem", color: "var(--text-light)" }}>
+                    {publicProjects.length === 0
+                      ? "Încă nu există proiecte publice în platformă. Creează primul proiect public!"
+                      : "Încearcă să modifici termenii de căutare sau să selectezi alt tag."}
+                  </p>
+                </div>
+              </div>
+            ) : (
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))",
+                  gap: "1rem",
+                }}
+              >
+                {filteredPublicProjects.map((project) => (
+                  <div
+                    key={project.id}
+                    className="card"
+                    style={{
+                      textAlign: "left",
+                      background: "var(--background)",
+                      border: "1px solid var(--border)",
+                      cursor: "pointer",
+                      transition: "all 0.2s ease",
+                    }}
+                    onClick={() => handleProjectSelect(project)}
+                  >
+                    <div
+                      style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "start",
+                        marginBottom: "0.5rem",
+                      }}
+                    >
+                      <h5 style={{ margin: 0, color: "var(--primary)" }}>
+                        {project.title}
+                      </h5>
+                      <span
+                        className={`badge ${
+                          project.access === "private"
+                            ? "badge-warning"
+                            : "badge-success"
+                        }`}
+                      >
+                        {project.access === "private"
+                          ? "🔒 Privat"
+                          : "🌐 Public"}
+                      </span>
+                    </div>
+                    <p
+                      style={{
+                        fontSize: "0.9rem",
+                        color: "var(--text-light)",
+                        marginBottom: "1rem",
+                        lineHeight: "1.4",
+                        display: "-webkit-box",
+                        WebkitLineClamp: 3,
+                        WebkitBoxOrient: "vertical",
+                        overflow: "hidden",
+                      }}
+                    >
+                      {project.description}
+                    </p>
+
+                    {/* Tags */}
+                    {project.tags && (
+                      <div
+                        style={{
+                          display: "flex",
+                          gap: "0.5rem",
+                          marginBottom: "1rem",
+                          flexWrap: "wrap",
+                        }}
+                      >
+                        {project.tags
+                          .split(",")
+                          .slice(0, 3)
+                          .map((tag, index) => (
+                            <span
+                              key={index}
+                              className="badge"
+                              style={{ fontSize: "0.8rem" }}
+                            >
+                              {tag.trim()}
+                            </span>
+                          ))}
+                        {project.tags.split(",").length > 3 && (
+                          <span
+                            style={{
+                              fontSize: "0.75rem",
+                              color: "var(--text-light)",
+                            }}
+                          >
+                            +{project.tags.split(",").length - 3} mai multe
+                          </span>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Author and Date */}
+                    <div
+                      style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                        fontSize: "0.8rem",
+                        color: "var(--text-light)",
+                        paddingTop: "0.75rem",
+                        borderTop: "1px solid var(--border)",
+                      }}
+                    >
+                      <div>
+                        👤 {project.user?.firstName} {project.user?.lastName}
+                      </div>
+                      <div>📅 {formatDate(project.createdAt)}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+
         {/* Demo Info
         <div
           className="card"
@@ -524,6 +948,97 @@ const Dashboard = () => {
           </div>
         </div> */}
       </div>
+
+      {/* Modaluri */}
+      <NewProjectModal
+        isOpen={isNewProjectModalOpen}
+        onClose={() => setIsNewProjectModalOpen(false)}
+      />
+
+      <ExploreProjectsModal
+        isOpen={isExploreProjectsModalOpen}
+        onClose={() => setIsExploreProjectsModalOpen(false)}
+        onProjectSelect={handleProjectSelect}
+      />
+
+      <InviteCollaboratorsModal
+        isOpen={isInviteCollaboratorsModalOpen}
+        onClose={() => setIsInviteCollaboratorsModalOpen(false)}
+      />
+
+      <ProjectDetailsModal
+        isOpen={isProjectDetailsModalOpen}
+        onClose={() => setIsProjectDetailsModalOpen(false)}
+        project={selectedProject}
+      />
+
+      {/* Pin Modal for Private Projects */}
+      {isPinModalOpen && (
+        <div
+          style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: "rgba(0, 0, 0, 0.5)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 1001,
+            padding: "1rem",
+          }}
+        >
+          <div
+            className="card"
+            style={{
+              width: "100%",
+              maxWidth: "400px",
+              position: "relative",
+            }}
+          >
+            <h3 style={{ marginBottom: "1rem" }}>🔒 Proiect privat</h3>
+            <p style={{ marginBottom: "1rem" }}>
+              Proiectul <strong>"{pendingPrivateProject?.title}"</strong> este
+              privat.
+            </p>
+
+            {pinError && (
+              <div style={{ color: "red", marginBottom: "1rem" }}>
+                {pinError}
+              </div>
+            )}
+
+            <input
+              type="text"
+              value={pinInput}
+              onChange={(e) => setPinInput(e.target.value)}
+              placeholder="Introdu AccessID..."
+              style={{
+                width: "100%",
+                padding: "0.75rem",
+                marginBottom: "1rem",
+                borderRadius: "8px",
+                border: "1px solid var(--border)",
+              }}
+              onKeyPress={(e) => {
+                if (e.key === "Enter") {
+                  handlePinSubmit();
+                }
+              }}
+            />
+
+            <div style={{ display: "flex", gap: "1rem" }}>
+              <button onClick={handlePinCancel} className="btn btn-outline">
+                Anulează
+              </button>
+              <button onClick={handlePinSubmit} className="btn btn-primary">
+                Deschide
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

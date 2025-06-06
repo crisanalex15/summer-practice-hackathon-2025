@@ -11,7 +11,7 @@ public class Project
     public DateTime CreatedAt { get; set; }
     public DateTime? UpdatedAt { get; set; }
 
-    public ProjectStatus Status { get; set; }
+    public ProjectStatus Status { get; set; } // in review, approved, needs changes
 
     public string UserId { get; set; }
     public ApplicationUser User { get; set; }

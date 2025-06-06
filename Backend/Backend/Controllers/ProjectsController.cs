@@ -38,6 +38,9 @@ namespace Backend.Controllers
                     Tags = p.Tags,
                     CreatedAt = p.CreatedAt,
                     Status = p.Status,
+                    UserId = p.UserId,
+                    Access = p.Access,
+                    AccessId = p.AccessId,
                     User = new UserDto
                     {
                         Id = p.User.Id,
@@ -80,6 +83,8 @@ namespace Backend.Controllers
                 UpdatedAt = project.UpdatedAt,
                 Status = project.Status,
                 UserId = project.UserId,
+                Access = project.Access,
+                AccessId = project.AccessId,
                 User = new UserDto
                 {
                     Id = project.User.Id,
@@ -139,8 +144,8 @@ namespace Backend.Controllers
                 CreatedAt = DateTime.UtcNow,
                 Status = ProjectStatus.InReview,
                 UserId = userId,
-                Access = "public", // Default public access
-                AccessId = ""      // Empty for now
+                Access = request.Access ?? "public", // Folosește valoarea din request sau default public
+                AccessId = request.AccessId ?? ""    // Folosește valoarea din request sau empty
             };
 
             _context.Projects.Add(project);
@@ -162,6 +167,8 @@ namespace Backend.Controllers
                 UpdatedAt = project.UpdatedAt,
                 Status = project.Status,
                 UserId = project.UserId,
+                Access = project.Access,
+                AccessId = project.AccessId,
                 User = new UserDto
                 {
                     Id = project.User.Id,
@@ -204,6 +211,9 @@ namespace Backend.Controllers
             project.Description = request.Description;
             project.CodeContent = request.CodeContent;
             project.Tags = request.Tags ?? "";
+            project.Status = request.Status;
+            project.Access = request.Access ?? project.Access;
+            project.AccessId = request.AccessId ?? project.AccessId;
             project.UpdatedAt = DateTime.UtcNow;
 
             await _context.SaveChangesAsync();
@@ -219,6 +229,8 @@ namespace Backend.Controllers
                 UpdatedAt = project.UpdatedAt,
                 Status = project.Status,
                 UserId = project.UserId,
+                Access = project.Access,
+                AccessId = project.AccessId,
                 User = new UserDto
                 {
                     Id = project.User.Id,

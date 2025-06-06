@@ -43,6 +43,12 @@ const ProjectDetailsModal = ({ isOpen, onClose, project }) => {
   const [currentUser, setCurrentUser] = useState(null);
   const [isOwner, setIsOwner] = useState(false);
 
+  // ChatGPT integration states
+  const [chatGptResponse, setChatGptResponse] = useState("");
+  const [isLoadingChatGpt, setIsLoadingChatGpt] = useState(false);
+  const [chatGptError, setChatGptError] = useState("");
+  const [showChatGptPanel, setShowChatGptPanel] = useState(false);
+
   useEffect(() => {
     if (isOpen && project) {
       fetchProjectDetails();
@@ -168,6 +174,121 @@ const ProjectDetailsModal = ({ isOpen, onClose, project }) => {
       setError("Nu s-a putut adăuga comentariul: " + error.message);
     } finally {
       setIsAddingComment(false);
+    }
+  };
+
+  // ChatGPT integration functions
+  const callChatGPT = async (prompt, codeContent) => {
+    setIsLoadingChatGpt(true);
+    setChatGptError("");
+    setShowChatGptPanel(true);
+
+    try {
+      // Using OpenAI API
+      const response = await fetch(
+        "https://api.openai.com/v1/chat/completions",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${import.meta.env.VITE_OPENAI_API_KEY}`,
+          },
+          body: JSON.stringify({
+            model: "gpt-3.5-turbo",
+            messages: [
+              {
+                role: "system",
+                content:
+                  "Ești un expert programator care ajută cu review-uri și fix-uri de cod. Răspunde în română.",
+              },
+              {
+                role: "user",
+                content: `${prompt}\n\nCod pentru analiză:\n\`\`\`\n${codeContent}\n\`\`\``,
+              },
+            ],
+            max_tokens: 1000,
+            temperature: 0.7,
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        let errorMessage = `API Error: ${response.status}`;
+
+        if (response.status === 429) {
+          errorMessage =
+            "🚦 Prea multe cereri! Ai depășit limita de 3 requests/minut. Te rog să aștepți 1-2 minute și încearcă din nou.";
+        } else if (response.status === 401) {
+          errorMessage =
+            "🔑 API Key invalid sau expirat. Verifică cheia în fișierul .env";
+        } else if (response.status === 403) {
+          errorMessage =
+            "❌ Acces interzis. Verifică permisiunile API Key-ului.";
+        } else if (response.status === 500) {
+          errorMessage =
+            "🔧 Eroare server OpenAI. Încearcă din nou în câteva minute.";
+        }
+
+        throw new Error(errorMessage);
+      }
+
+      const data = await response.json();
+      const chatGptReply =
+        data.choices[0]?.message?.content || "Nu am primit un răspuns valid.";
+      setChatGptResponse(chatGptReply);
+      console.log("✅ ChatGPT răspuns primit:", chatGptReply);
+    } catch (error) {
+      console.error("❌ Eroare ChatGPT:", error);
+      setChatGptError(error.message);
+    } finally {
+      setIsLoadingChatGpt(false);
+    }
+  };
+
+  const handleCodeReview = () => {
+    const codeToReview = isEditing
+      ? editData.codeContent
+      : fullProject?.codeContent;
+    if (!codeToReview || !codeToReview.trim()) {
+      setError("Nu există cod pentru review!");
+      return;
+    }
+
+    const prompt =
+      "Te rog să faci un review detaliat al acestui cod. Identifică probleme potențiale, sugerează îmbunătățiri și oferă feedback constructiv despre calitatea codului, performanță, securitate și best practices.";
+    callChatGPT(prompt, codeToReview);
+  };
+
+  const handleCodeFix = () => {
+    const codeToFix = isEditing
+      ? editData.codeContent
+      : fullProject?.codeContent;
+    if (!codeToFix || !codeToFix.trim()) {
+      setError("Nu există cod pentru fix!");
+      return;
+    }
+
+    const prompt =
+      "Te rog să analizezi acest cod și să sugerezi fix-uri concrete pentru problemele găsite. Oferă o versiune îmbunătățită a codului cu explicații pentru modificările făcute.";
+    callChatGPT(prompt, codeToFix);
+  };
+
+  const applyChatGptSuggestion = () => {
+    if (!chatGptResponse) return;
+
+    // Extract code blocks from ChatGPT response
+    const codeBlockRegex = /```[\s\S]*?\n([\s\S]*?)```/g;
+    const matches = [...chatGptResponse.matchAll(codeBlockRegex)];
+
+    if (matches.length > 0) {
+      // Use the first code block found
+      const suggestedCode = matches[0][1].trim();
+      setEditData({ ...editData, codeContent: suggestedCode });
+      console.log("✅ Cod aplicat din sugestia ChatGPT");
+    } else {
+      setError(
+        "Nu am găsit un bloc de cod în răspunsul ChatGPT pentru a-l aplica."
+      );
     }
   };
 
@@ -757,21 +878,70 @@ const ProjectDetailsModal = ({ isOpen, onClose, project }) => {
                       justifyContent: "space-between",
                       alignItems: "center",
                       marginBottom: "1rem",
+                      flexWrap: "wrap",
+                      gap: "0.5rem",
                     }}
                   >
                     <h4 style={{ margin: 0, color: "var(--text)" }}>
                       💻 Conținut cod
                     </h4>
-                    {(fullProject?.codeContent || editData.codeContent) && (
-                      <button
-                        onClick={handleDownloadCode}
-                        className="btn btn-outline"
-                        style={{ fontSize: "0.9rem", padding: "0.5rem 1rem" }}
-                      >
-                        <Download size={16} style={{ marginRight: "0.5rem" }} />
-                        Descarcă TXT
-                      </button>
-                    )}
+                    <div
+                      style={{
+                        display: "flex",
+                        gap: "0.5rem",
+                        flexWrap: "wrap",
+                      }}
+                    >
+                      {isEditing &&
+                        isOwner &&
+                        (fullProject?.codeContent || editData.codeContent) && (
+                          <>
+                            <button
+                              onClick={handleCodeReview}
+                              disabled={isLoadingChatGpt}
+                              className="btn btn-secondary"
+                              style={{
+                                fontSize: "0.8rem",
+                                padding: "0.4rem 0.8rem",
+                                whiteSpace: "nowrap",
+                                opacity: isLoadingChatGpt ? 0.6 : 1,
+                              }}
+                            >
+                              🤖 Review
+                            </button>
+                            <button
+                              onClick={handleCodeFix}
+                              disabled={isLoadingChatGpt}
+                              className="btn btn-accent"
+                              style={{
+                                fontSize: "0.8rem",
+                                padding: "0.4rem 0.8rem",
+                                whiteSpace: "nowrap",
+                                opacity: isLoadingChatGpt ? 0.6 : 1,
+                              }}
+                            >
+                              🔧 Fix
+                            </button>
+                          </>
+                        )}
+                      {(fullProject?.codeContent || editData.codeContent) && (
+                        <button
+                          onClick={handleDownloadCode}
+                          className="btn btn-outline"
+                          style={{
+                            fontSize: "0.8rem",
+                            padding: "0.4rem 0.8rem",
+                            whiteSpace: "nowrap",
+                          }}
+                        >
+                          <Download
+                            size={14}
+                            style={{ marginRight: "0.3rem" }}
+                          />
+                          Descarcă TXT
+                        </button>
+                      )}
+                    </div>
                   </div>
 
                   <div
@@ -823,6 +993,111 @@ const ProjectDetailsModal = ({ isOpen, onClose, project }) => {
                       </pre>
                     )}
                   </div>
+
+                  {/* ChatGPT Response Panel */}
+                  {showChatGptPanel && (
+                    <div
+                      style={{
+                        marginTop: "1.5rem",
+                        background: "var(--background)",
+                        border: "1px solid var(--border)",
+                        borderRadius: "8px",
+                        padding: "1rem",
+                      }}
+                    >
+                      <div
+                        style={{
+                          display: "flex",
+                          justifyContent: "space-between",
+                          alignItems: "center",
+                          marginBottom: "1rem",
+                        }}
+                      >
+                        <h5 style={{ margin: 0, color: "var(--text)" }}>
+                          🤖 ChatGPT Response
+                        </h5>
+                        <button
+                          onClick={() => setShowChatGptPanel(false)}
+                          style={{
+                            background: "none",
+                            border: "none",
+                            color: "var(--text-light)",
+                            cursor: "pointer",
+                            padding: "0.25rem",
+                          }}
+                        >
+                          <X size={16} />
+                        </button>
+                      </div>
+
+                      {isLoadingChatGpt ? (
+                        <div style={{ textAlign: "center", padding: "2rem" }}>
+                          <div
+                            className="spinner"
+                            style={{ margin: "0 auto 1rem" }}
+                          ></div>
+                          <p style={{ color: "var(--text-light)" }}>
+                            ChatGPT analizează codul...
+                          </p>
+                        </div>
+                      ) : chatGptError ? (
+                        <div
+                          style={{
+                            background: "var(--error)",
+                            color: "white",
+                            padding: "1rem",
+                            borderRadius: "4px",
+                            marginBottom: "1rem",
+                          }}
+                        >
+                          <div style={{ marginBottom: "0.5rem" }}>
+                            {chatGptError}
+                          </div>
+                          {chatGptError.includes("429") ||
+                          chatGptError.includes("Rate limit") ? (
+                            <div style={{ fontSize: "0.9rem", opacity: 0.9 }}>
+                              💡 <strong>Soluții:</strong>
+                              <br />• Așteaptă 1-2 minute între cereri
+                              <br />• Tier-ul gratuit: 3 cereri/minut
+                              <br />• Consideră upgrade la Pay-as-you-go pentru
+                              mai multe cereri
+                            </div>
+                          ) : null}
+                        </div>
+                      ) : chatGptResponse ? (
+                        <>
+                          <div
+                            style={{
+                              background: "white",
+                              border: "1px solid var(--border)",
+                              borderRadius: "4px",
+                              padding: "1rem",
+                              marginBottom: "1rem",
+                              maxHeight: "300px",
+                              overflow: "auto",
+                              whiteSpace: "pre-wrap",
+                              fontSize: "0.9rem",
+                              lineHeight: "1.5",
+                            }}
+                          >
+                            {chatGptResponse}
+                          </div>
+                          {isEditing && chatGptResponse.includes("```") && (
+                            <button
+                              onClick={applyChatGptSuggestion}
+                              className="btn btn-primary"
+                              style={{
+                                fontSize: "0.8rem",
+                                padding: "0.4rem 0.8rem",
+                              }}
+                            >
+                              ✨ Aplică Sugestia
+                            </button>
+                          )}
+                        </>
+                      ) : null}
+                    </div>
+                  )}
                 </div>
               )}
 

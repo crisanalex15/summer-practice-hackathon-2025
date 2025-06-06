@@ -67,7 +67,7 @@ body {
 
 #root {
   min-height: 100vh;
-  width: 90%;
+  width: 100%;
   display: flex;
   flex-direction: column;
 }
@@ -377,11 +377,56 @@ p {
 /* Responsive */
 @media (max-width: 768px) {
   .container {
-    padding: 0 0.75rem;
+    padding: 0.5rem !important;
   }
 
   .card {
-    padding: 1rem;
+    margin: 0.25rem !important;
+    padding: 0.75rem !important;
+  }
+
+  /* Dashboard grid adjustments */
+  .dashboard-grid {
+    grid-template-columns: 1fr !important;
+    gap: 1rem !important;
+  }
+
+  /* Project cards mobile */
+  .project-grid {
+    grid-template-columns: 1fr !important;
+    gap: 0.75rem !important;
+  }
+
+  /* Buttons smaller on mobile */
+  .btn {
+    padding: 0.5rem 0.75rem !important;
+    font-size: 0.85rem !important;
+  }
+
+  /* Modal adjustments */
+  .modal-card {
+    margin: 0.5rem !important;
+    max-width: calc(100vw - 1rem) !important;
+    max-height: calc(100vh - 1rem) !important;
+  }
+
+  /* Tab responsive */
+  .tab {
+    padding: 0.5rem 0.6rem !important;
+    font-size: 0.75rem !important;
+  }
+
+  /* Input fields mobile */
+  input,
+  textarea,
+  select {
+    font-size: 16px !important; /* Prevents zoom on iOS */
+  }
+
+  /* Flex containers wrap */
+  .flex-wrap-mobile {
+    flex-wrap: wrap !important;
+    gap: 0.5rem !important;
   }
 
   h1 {
@@ -392,6 +437,37 @@ p {
   }
   h3 {
     font-size: 1.5rem;
+  }
+}
+
+@media (max-width: 480px) {
+  /* Very small screens */
+  .container {
+    padding: 0.25rem !important;
+  }
+
+  /* Smaller text */
+  h1 {
+    font-size: 1.5rem !important;
+  }
+  h2 {
+    font-size: 1.3rem !important;
+  }
+  h3 {
+    font-size: 1.1rem !important;
+  }
+  h4 {
+    font-size: 1rem !important;
+  }
+
+  /* Hide less important elements */
+  .hide-mobile {
+    display: none !important;
+  }
+
+  /* Stack elements vertically */
+  .stack-mobile {
+    flex-direction: column !important;
   }
 }
 

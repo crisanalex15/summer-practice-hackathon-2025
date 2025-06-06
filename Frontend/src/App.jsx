@@ -335,9 +335,19 @@ const Dashboard = () => {
   const [pinInput, setPinInput] = useState("");
   const [pinError, setPinError] = useState("");
 
+  // User projects and stats
+  const [userProjects, setUserProjects] = useState([]);
+  const [projectStats, setProjectStats] = useState({
+    active: 0,
+    inReview: 0,
+    completed: 0,
+    total: 0,
+  });
+
   useEffect(() => {
     setStorageInfo(auth.getStorageInfo());
     fetchPublicProjects(); // Încarcă proiectele publice la start
+    fetchUserProjects(); // Încarcă proiectele utilizatorului pentru statistici
   }, []);
 
   useEffect(() => {
@@ -426,6 +436,44 @@ const Dashboard = () => {
       console.error("❌ Eroare la încărcarea proiectelor:", error);
     } finally {
       setIsLoadingProjects(false);
+    }
+  };
+
+  // Fetch user projects and calculate stats
+  const fetchUserProjects = async () => {
+    try {
+      const currentUser = auth.getUserData();
+      if (!currentUser?.id) {
+        console.log(
+          "❌ Utilizator neautentificat - nu se pot încărca proiectele"
+        );
+        return;
+      }
+
+      const allProjects = await projectsAPI.getAll();
+      const userProjectsList = allProjects.filter(
+        (project) => project.userId === currentUser.id
+      );
+
+      setUserProjects(userProjectsList);
+
+      // Calculate statistics based on project status
+      // Status mapping: 0 = InReview, 1 = Approved, 2 = NeedsChanges
+      const stats = {
+        total: userProjectsList.length,
+        inReview: userProjectsList.filter((p) => p.status === 0).length, // InReview
+        active: userProjectsList.filter((p) => p.status === 1).length, // Approved
+        completed: userProjectsList.filter((p) => p.status === 2).length, // NeedsChanges (consider completed/rejected)
+      };
+
+      setProjectStats(stats);
+      console.log("📊 Statistici proiecte utilizator:", stats);
+      console.log("📋 Proiecte utilizator:", userProjectsList);
+    } catch (error) {
+      console.error(
+        "❌ Eroare la încărcarea proiectelor utilizatorului:",
+        error
+      );
     }
   };
 
@@ -529,9 +577,10 @@ const Dashboard = () => {
       >
         {/* Status Cards */}
         <div
+          className="dashboard-grid"
           style={{
             display: "grid",
-            gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
+            gridTemplateColumns: "repeat(auto-fit, minmax(250px, 1fr))",
             gap: "2rem",
             width: "100%",
             justifyItems: "center",
@@ -578,13 +627,22 @@ const Dashboard = () => {
             </h3>
             <div className="text-sm text-light" style={{ lineHeight: "1.8" }}>
               <div>
-                Active: <strong>0</strong>
+                Active: <strong>{projectStats.active}</strong>
               </div>
               <div>
-                În review: <strong>0</strong>
+                În review: <strong>{projectStats.inReview}</strong>
               </div>
               <div>
-                Finalizate: <strong>0</strong>
+                Respinse: <strong>{projectStats.completed}</strong>
+              </div>
+              <div
+                style={{
+                  marginTop: "0.5rem",
+                  paddingTop: "0.5rem",
+                  borderTop: "1px solid var(--border)",
+                }}
+              >
+                Total: <strong>{projectStats.total}</strong>
               </div>
             </div>
           </div>
@@ -621,6 +679,7 @@ const Dashboard = () => {
             ⚡ Acțiuni rapide
           </h3>
           <div
+            className="flex-wrap-mobile"
             style={{
               display: "flex",
               gap: "1rem",
@@ -765,9 +824,10 @@ const Dashboard = () => {
               </div>
             ) : (
               <div
+                className="project-grid"
                 style={{
                   display: "grid",
-                  gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))",
+                  gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
                   gap: "1rem",
                 }}
               >
@@ -867,12 +927,16 @@ const Dashboard = () => {
                         color: "var(--text-light)",
                         paddingTop: "0.75rem",
                         borderTop: "1px solid var(--border)",
+                        flexWrap: "wrap",
+                        gap: "0.5rem",
                       }}
                     >
-                      <div>
+                      <div style={{ minWidth: "0", flex: "1" }}>
                         👤 {project.user?.firstName} {project.user?.lastName}
                       </div>
-                      <div>📅 {formatDate(project.createdAt)}</div>
+                      <div style={{ whiteSpace: "nowrap" }}>
+                        📅 {formatDate(project.createdAt)}
+                      </div>
                     </div>
                   </div>
                 ))}
@@ -952,7 +1016,10 @@ const Dashboard = () => {
       {/* Modaluri */}
       <NewProjectModal
         isOpen={isNewProjectModalOpen}
-        onClose={() => setIsNewProjectModalOpen(false)}
+        onClose={() => {
+          setIsNewProjectModalOpen(false);
+          fetchUserProjects(); // Actualizează statisticile după crearea unui proiect
+        }}
       />
 
       <ExploreProjectsModal
@@ -968,7 +1035,10 @@ const Dashboard = () => {
 
       <ProjectDetailsModal
         isOpen={isProjectDetailsModalOpen}
-        onClose={() => setIsProjectDetailsModalOpen(false)}
+        onClose={() => {
+          setIsProjectDetailsModalOpen(false);
+          fetchUserProjects(); // Actualizează statisticile după modificarea unui proiect
+        }}
         project={selectedProject}
       />
 

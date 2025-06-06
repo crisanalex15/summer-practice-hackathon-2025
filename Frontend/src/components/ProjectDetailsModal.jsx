@@ -81,8 +81,6 @@ const ProjectDetailsModal = ({ isOpen, onClose, project }) => {
         tags: projectDetails.tags || "",
         status: projectDetails.status || 0,
       });
-
-      console.log("✅ Detalii proiect încărcate:", projectDetails);
     } catch (error) {
       console.error("❌ Eroare la încărcarea detaliilor:", error);
       setError(error.message);
@@ -188,7 +186,6 @@ const ProjectDetailsModal = ({ isOpen, onClose, project }) => {
       0: { text: "În Review", class: "badge-warning" },
       1: { text: "Aprobat", class: "badge-success" },
       2: { text: "Respins", class: "badge-error" },
-      3: { text: "Arhivat", class: "badge-secondary" },
     };
 
     const config = statusConfig[status] || {
@@ -202,7 +199,6 @@ const ProjectDetailsModal = ({ isOpen, onClose, project }) => {
     { value: 0, label: "În Review" },
     { value: 1, label: "Aprobat" },
     { value: 2, label: "Respins" },
-    { value: 3, label: "Arhivat" },
   ];
 
   if (!isOpen || !project) return null;
@@ -224,7 +220,7 @@ const ProjectDetailsModal = ({ isOpen, onClose, project }) => {
       }}
     >
       <div
-        className="card"
+        className="card modal-card"
         style={{
           width: "100%",
           maxWidth: "1000px",
@@ -233,6 +229,7 @@ const ProjectDetailsModal = ({ isOpen, onClose, project }) => {
           position: "relative",
           display: "flex",
           flexDirection: "column",
+          margin: "0 0.5rem",
         }}
       >
         {/* Header */}
@@ -243,6 +240,8 @@ const ProjectDetailsModal = ({ isOpen, onClose, project }) => {
             alignItems: "start",
             marginBottom: "1.5rem",
             flexShrink: 0,
+            flexWrap: "wrap",
+            gap: "1rem",
           }}
         >
           <div style={{ flex: 1 }}>
@@ -264,8 +263,8 @@ const ProjectDetailsModal = ({ isOpen, onClose, project }) => {
                   style={{
                     fontSize: "1.5rem",
                     fontWeight: "bold",
-                    color: "var(--primary)",
-                    background: "var(--background)",
+                    color: "#333",
+                    background: "white",
                     border: "1px solid var(--border)",
                     padding: "0.25rem 0.5rem",
                     borderRadius: "4px",
@@ -296,9 +295,10 @@ const ProjectDetailsModal = ({ isOpen, onClose, project }) => {
                   style={{
                     background: "var(--background)",
                     border: "1px solid var(--border)",
-                    padding: "0.25rem 0.5rem",
+                    padding: "0.75rem 0.5rem",
                     borderRadius: "4px",
                     fontSize: "0.9rem",
+                    marginRight: "1rem",
                   }}
                 >
                   {getStatusOptions().map((option) => (
@@ -352,7 +352,14 @@ const ProjectDetailsModal = ({ isOpen, onClose, project }) => {
             </div>
           </div>
 
-          <div style={{ display: "flex", gap: "0.5rem" }}>
+          <div
+            style={{
+              display: "flex",
+              gap: "0.5rem",
+              flexWrap: "wrap",
+              minWidth: "fit-content",
+            }}
+          >
             {isOwner && (
               <>
                 {isEditing ? (
@@ -361,9 +368,13 @@ const ProjectDetailsModal = ({ isOpen, onClose, project }) => {
                       onClick={handleSaveChanges}
                       disabled={isSaving}
                       className="btn btn-primary"
-                      style={{ fontSize: "0.9rem", padding: "0.5rem 1rem" }}
+                      style={{
+                        fontSize: "0.8rem",
+                        padding: "0.4rem 0.8rem",
+                        whiteSpace: "nowrap",
+                      }}
                     >
-                      <Save size={16} style={{ marginRight: "0.5rem" }} />
+                      <Save size={14} style={{ marginRight: "0.3rem" }} />
                       {isSaving ? "Salvez..." : "Salvează"}
                     </button>
                     <button
@@ -379,7 +390,11 @@ const ProjectDetailsModal = ({ isOpen, onClose, project }) => {
                         });
                       }}
                       className="btn btn-outline"
-                      style={{ fontSize: "0.9rem", padding: "0.5rem 1rem" }}
+                      style={{
+                        fontSize: "0.8rem",
+                        padding: "0.4rem 0.8rem",
+                        whiteSpace: "nowrap",
+                      }}
                     >
                       Anulează
                     </button>
@@ -388,9 +403,13 @@ const ProjectDetailsModal = ({ isOpen, onClose, project }) => {
                   <button
                     onClick={() => setIsEditing(true)}
                     className="btn btn-outline"
-                    style={{ fontSize: "0.9rem", padding: "0.5rem 1rem" }}
+                    style={{
+                      fontSize: "0.8rem",
+                      padding: "0.4rem 0.8rem",
+                      whiteSpace: "nowrap",
+                    }}
                   >
-                    <Edit3 size={16} style={{ marginRight: "0.5rem" }} />
+                    <Edit3 size={14} style={{ marginRight: "0.3rem" }} />
                     Editează
                   </button>
                 )}
@@ -404,12 +423,14 @@ const ProjectDetailsModal = ({ isOpen, onClose, project }) => {
                 border: "none",
                 color: "var(--text-light)",
                 cursor: "pointer",
-                padding: "0.5rem",
+                padding: "0.4rem",
                 borderRadius: "4px",
+                minWidth: "32px",
+                minHeight: "32px",
               }}
               className="btn-ghost"
             >
-              <X size={20} />
+              <X size={18} />
             </button>
           </div>
         </div>
@@ -421,13 +442,15 @@ const ProjectDetailsModal = ({ isOpen, onClose, project }) => {
             borderBottom: "1px solid var(--border)",
             marginBottom: "1.5rem",
             flexShrink: 0,
+            overflowX: "auto",
+            gap: "0.25rem",
           }}
         >
           <button
             onClick={() => setActiveTab("overview")}
             className={`tab ${activeTab === "overview" ? "tab-active" : ""}`}
             style={{
-              padding: "0.75rem 1rem",
+              padding: "0.6rem 0.8rem",
               background: "none",
               border: "none",
               borderBottom:
@@ -439,18 +462,20 @@ const ProjectDetailsModal = ({ isOpen, onClose, project }) => {
                   ? "var(--primary)"
                   : "var(--text-light)",
               cursor: "pointer",
-              fontSize: "0.9rem",
+              fontSize: "0.8rem",
               fontWeight: "500",
+              whiteSpace: "nowrap",
+              minWidth: "fit-content",
             }}
           >
-            <Eye size={16} style={{ marginRight: "0.5rem" }} />
+            <Eye size={14} style={{ marginRight: "0.3rem" }} />
             Prezentare
           </button>
           <button
             onClick={() => setActiveTab("code")}
             className={`tab ${activeTab === "code" ? "tab-active" : ""}`}
             style={{
-              padding: "0.75rem 1rem",
+              padding: "0.6rem 0.8rem",
               background: "none",
               border: "none",
               borderBottom:
@@ -460,18 +485,20 @@ const ProjectDetailsModal = ({ isOpen, onClose, project }) => {
               color:
                 activeTab === "code" ? "var(--primary)" : "var(--text-light)",
               cursor: "pointer",
-              fontSize: "0.9rem",
+              fontSize: "0.8rem",
               fontWeight: "500",
+              whiteSpace: "nowrap",
+              minWidth: "fit-content",
             }}
           >
-            <Code size={16} style={{ marginRight: "0.5rem" }} />
+            <Code size={14} style={{ marginRight: "0.3rem" }} />
             Cod
           </button>
           <button
             onClick={() => setActiveTab("comments")}
             className={`tab ${activeTab === "comments" ? "tab-active" : ""}`}
             style={{
-              padding: "0.75rem 1rem",
+              padding: "0.6rem 0.8rem",
               background: "none",
               border: "none",
               borderBottom:
@@ -483,18 +510,20 @@ const ProjectDetailsModal = ({ isOpen, onClose, project }) => {
                   ? "var(--primary)"
                   : "var(--text-light)",
               cursor: "pointer",
-              fontSize: "0.9rem",
+              fontSize: "0.8rem",
               fontWeight: "500",
+              whiteSpace: "nowrap",
+              minWidth: "fit-content",
             }}
           >
-            <MessageCircle size={16} style={{ marginRight: "0.5rem" }} />
+            <MessageCircle size={14} style={{ marginRight: "0.3rem" }} />
             Comentarii ({fullProject?.comments?.length || 0})
           </button>
           <button
             onClick={() => setActiveTab("files")}
             className={`tab ${activeTab === "files" ? "tab-active" : ""}`}
             style={{
-              padding: "0.75rem 1rem",
+              padding: "0.6rem 0.8rem",
               background: "none",
               border: "none",
               borderBottom:
@@ -504,11 +533,13 @@ const ProjectDetailsModal = ({ isOpen, onClose, project }) => {
               color:
                 activeTab === "files" ? "var(--primary)" : "var(--text-light)",
               cursor: "pointer",
-              fontSize: "0.9rem",
+              fontSize: "0.8rem",
               fontWeight: "500",
+              whiteSpace: "nowrap",
+              minWidth: "fit-content",
             }}
           >
-            <Paperclip size={16} style={{ marginRight: "0.5rem" }} />
+            <Paperclip size={14} style={{ marginRight: "0.3rem" }} />
             Fișiere ({fullProject?.fileAttachments?.length || 0})
           </button>
         </div>
@@ -579,7 +610,8 @@ const ProjectDetailsModal = ({ isOpen, onClose, project }) => {
                           padding: "0.75rem",
                           border: "1px solid var(--border)",
                           borderRadius: "8px",
-                          background: "var(--background)",
+                          background: "white",
+                          color: "#333",
                           fontSize: "1rem",
                           lineHeight: "1.6",
                           resize: "vertical",
@@ -764,7 +796,8 @@ const ProjectDetailsModal = ({ isOpen, onClose, project }) => {
                           minHeight: "400px",
                           padding: "1rem",
                           border: "none",
-                          background: "var(--background)",
+                          background: "white",
+                          color: "#333",
                           fontSize: "0.9rem",
                           lineHeight: "1.4",
                           fontFamily: "monospace",
@@ -827,6 +860,7 @@ const ProjectDetailsModal = ({ isOpen, onClose, project }) => {
                           border: "1px solid var(--border)",
                           borderRadius: "4px",
                           background: "white",
+                          color: "#333",
                           fontSize: "1rem",
                           lineHeight: "1.5",
                           resize: "vertical",

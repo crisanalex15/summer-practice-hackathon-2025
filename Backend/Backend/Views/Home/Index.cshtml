@@ -1,0 +1,9 @@
+﻿@{
+    ViewData["Title"] = "Home Page";
+}
+
+<div class="text-center">
+    <h1 class="display-4">Welcome - Backend -</h1>
+    <p>User id:@ViewData["UserID"]</p>
+    <a asp-controller="Home" asp-action="GetToSwagger" class="btn btn-primary mb-3">API</a>
+</div>

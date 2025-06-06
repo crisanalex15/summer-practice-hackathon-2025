@@ -20,7 +20,11 @@ namespace Backend
             {
                 options.AddPolicy("AllowSpecificOrigins", policy =>
                 {
-                    policy.WithOrigins("http://localhost:3000", "https://localhost:3000")
+                    policy.WithOrigins(
+                        "http://localhost:3000", "https://localhost:3000",  // Create React App
+                        "http://localhost:5173", "https://localhost:5173",  // Vite
+                        "http://localhost:5174", "https://localhost:5174"   // Alternative Vite port
+                    )
                           .AllowAnyMethod()
                           .AllowAnyHeader()
                           .AllowCredentials();

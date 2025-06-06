@@ -1,0 +1,58 @@
+
+@{
+    ViewData["Title"] = "Toate Proiectele";
+}
+
+<div class="container mt-4">
+    <h2 class="mb-4">Toate Proiectele</h2>
+    
+    <div class="row" id="projectsContainer">
+        <!-- Proiectele vor fi populate dinamic aici -->
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            fetchProjects();
+        });
+
+        function fetchProjects() {
+            fetch('/Home/GetAllProjects')
+                .then(response => response.json())
+                .then(projects => {
+                    const container = document.getElementById('projectsContainer');
+                    container.innerHTML = '';
+
+                    projects.forEach(project => {
+                        const projectCard = `
+                            <div class="col-md-4 mb-4">
+                                <div class="card h-100">
+                                    <div class="card-body">
+                                        <h5 class="card-title">${project.name}</h5>
+                                        <p class="card-text">${project.description || 'Nu există descriere'}</p>
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <small class="text-muted">Creat la: ${new Date(project.createdAt).toLocaleDateString()}</small>
+                                            <button class="btn btn-primary btn-sm" onclick="viewProjectDetails(${project.id})">
+                                                Vezi Detalii
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                        container.innerHTML += projectCard;
+                    });
+                })
+                .catch(error => {
+                    console.error('Eroare la încărcarea proiectelor:', error);
+                    alert('A apărut o eroare la încărcarea proiectelor. Vă rugăm să încercați din nou.');
+                });
+        }
+
+        function viewProjectDetails(projectId) {
+            // Implementare pentru vizualizarea detaliilor proiectului
+            window.location.href = `/Home/ProjectDetails/${projectId}`;
+        }
+    </script>
+}

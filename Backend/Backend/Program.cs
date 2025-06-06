@@ -53,8 +53,12 @@ namespace Backend
             var secretKey = jwtSettings["Secret"] ?? "YourSecretKeyHere123456789012345678901234567890";
             var key = Encoding.ASCII.GetBytes(secretKey);
 
-            builder.Services.AddAuthentication()
-            .AddJwtBearer("JwtBearer", options =>
+            builder.Services.AddAuthentication(options =>
+            {
+                options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+                options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+            })
+            .AddJwtBearer(options =>
             {
                 options.RequireHttpsMetadata = false;
                 options.SaveToken = true;
@@ -142,6 +146,19 @@ namespace Backend
 
             app.UseHttpsRedirection();
             app.UseStaticFiles();
+            
+            // Create uploads directory if it doesn't exist and serve uploaded files
+            var uploadsPath = Path.Combine(Directory.GetCurrentDirectory(), "uploads");
+            if (!Directory.Exists(uploadsPath))
+            {
+                Directory.CreateDirectory(uploadsPath);
+            }
+            
+            app.UseStaticFiles(new StaticFileOptions
+            {
+                FileProvider = new Microsoft.Extensions.FileProviders.PhysicalFileProvider(uploadsPath),
+                RequestPath = "/uploads"
+            });
 
             app.UseRouting();
 

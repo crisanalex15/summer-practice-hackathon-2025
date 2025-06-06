@@ -13,9 +13,12 @@ public class Project
 
     public ProjectStatus Status { get; set; }
 
-    public string Visibility { get; set; } // public, private
     public string UserId { get; set; }
     public ApplicationUser User { get; set; }
+
+    // acces alti utilizatori
+    public string Access { get; set; } // public, private
+    public string AccessId { get; set; }
 
     public ICollection<Comment> Comments { get; set; }
     public ICollection<FileAttachment> FileAttachments { get; set; }
